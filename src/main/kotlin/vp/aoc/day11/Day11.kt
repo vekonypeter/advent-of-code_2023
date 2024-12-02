@@ -1,62 +1,49 @@
-package vp.aoc.day10
+package vp.aoc.day11
 
 import vp.aoc.common.FileLoader
-import vp.aoc.common.println
+import java.lang.Math.max
+import java.lang.Math.min
+import kotlin.math.abs
 
 fun main() {
-    val map = FileLoader.loadFile("inputs/day10/ex1.txt")
+    val map = FileLoader.loadFile("inputs/day11/input.txt")
         .readLines()
 
-    val sy = map.indexOfFirst { it.contains("S") }
-    val sx = map[sy].indexOf("S")
-    val s = Cords(sx, sy)
+    val emptyRows = map.indices.filter { y -> map[y].all { it == '.' } }
+    val emptyCols = map[0].indices.filter { x -> map.all { it[x] == '.' } }
 
-    operator fun List<String>.get(cords: Cords) = this[cords.y][cords.x]
-    operator fun List<String>.get(x: Int, y: Int) = this[y][x]
-
-    fun Cords.next(prev: Cords): Cords = when (map[this]) {
-        'L' -> listOf(Cords(x, y - 1), Cords(x + 1, y))
-        '-' -> listOf(Cords(x - 1, y), Cords(x + 1, y))
-        '|' -> listOf(Cords(x, y - 1), Cords(x, y + 1))
-        'J' -> listOf(Cords(x, y - 1), Cords(x - 1, y))
-        'F' -> listOf(Cords(x + 1, y), Cords(x, y + 1))
-        '7' -> listOf(Cords(x - 1, y), Cords(x, y + 1))
-        else -> throw RuntimeException("Unexpected symbol ${map[this]} at $this")
-    }.first { it != prev }
-
-    fun Cords.next(): Cords = when {
-        map[x, y - 1] in listOf('|', '7', 'F') -> Cords(x, y - 1)
-        map[x + 1, y] in listOf('-', '7', 'J') -> Cords(x + 1, y)
-        map[x, y + 1] in listOf('|', 'J', 'L') -> Cords(x, y + 1)
-        map[x - 1, y] in listOf('-', 'F', 'L') -> Cords(x - 1, y)
-        else -> throw RuntimeException("Nowhere to go from $this")
+    val galaxies = buildList {
+        for (y in map.indices)
+            for (x in map[y].indices)
+                if (map[y][x] == '#') add(Cords(x, y))
     }
 
-    val path = mutableListOf(s, s.next())
-
-    while (path.last() != s) {
-        val lastTwo = path.takeLast(2)
-        path.add(lastTwo.last().next(lastTwo.first()))
-    }
-    ((path.size - 1) / 2).println()
-
-
-    var area = 0
-    for (i in 0 until path.size - 1) {
-        val a = path[i]
-        val b = path[i + 1]
-
-        area += a.x * b.y - a.y * b.x
+    val pairs = buildSet {
+        for (a in galaxies)
+            for (b in galaxies)
+                if (a != b && !contains(b to a)) add(a to b)
     }
 
-//    path.println()
-//
-//    path.size.println()
-//    area.println()
-//    (area / 2).println()
+    fun Cords.simpleDistanceTo(other: Cords): Long = abs(x - other.x).toLong() + abs(y - other.y)
+
+    fun Cords.expandedDistanceTo(other: Cords, emptyDistance: Int = 1): Long {
+        val emptyRowsBetween = emptyRows.count { it in min(y, other.y) until max(y, other.y) }
+        val emptyColsBetween = emptyCols.count { it in min(x, other.x) until max(x, other.x) }
+        return (emptyRowsBetween + emptyColsBetween) * emptyDistance + simpleDistanceTo(other)
+    }
+
+    val res1 = pairs
+        .sumOf { it.first.expandedDistanceTo(it.second) }
+
+    println("PART 1: $res1")
+
+    val res2 = pairs
+        .sumOf { it.first.expandedDistanceTo(it.second, emptyDistance = 1000000 - 1) }
+
+    println("PART 2: $res2")
 }
 
-data class Cords(
+private data class Cords(
     val x: Int,
     val y: Int,
 )
